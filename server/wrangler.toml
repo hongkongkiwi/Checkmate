@@ -36,7 +36,11 @@ queue = "checkmate-queue"
 
 # Triggers
 [triggers]
-crons = ["*/5 * * * *"] # Run every 5 minutes
+crons = [
+  "*/5 * * * *",    # Run every 5 minutes for monitor checks
+  "0 */6 * * *",    # Run every 6 hours for token cleanup
+  "0 2 * * *"       # Run daily at 2 AM for old checks cleanup
+]
 
 # Placement
 [placement]

@@ -12,6 +12,7 @@ import QueueRoutes from "../routes/queueRoute.js";
 import LogRoutes from "../routes/logRoutes.js";
 import DiagnosticRoutes from "../routes/diagnosticRoute.js";
 import NotificationRoutes from "../routes/notificationRoute.js";
+import AnnouncementRoutes from "../routes/announcementsRoute.js";
 
 export const setupRoutes = (router, services) => {
   const authRoutes = new AuthRoutes(services.authController);
@@ -25,6 +26,7 @@ export const setupRoutes = (router, services) => {
   const statusPageRoutes = new StatusPageRoutes(services.statusPageController);
   const notificationRoutes = new NotificationRoutes(services.notificationController);
   const diagnosticRoutes = new DiagnosticRoutes(services.diagnosticController);
+  const announcementRoutes = new AnnouncementRoutes(services.announcementController);
 
   // Create a wrapper function to convert Express-style routes to itty-router routes
   const addRoute = (method, path, ...handlers) => {
@@ -224,6 +226,12 @@ export const setupRoutes = (router, services) => {
   const statusPageRouter = statusPageRoutes.getRouter();
   statusPageRouter.stack.forEach(layer => {
     addRoute(layer.route.methods, `/api/v1/status-page${layer.route.path}`, ...layer.route.stack.map(item => item.handle));
+  });
+
+  // Announcement routes (partially public)
+  const announcementRouter = announcementRoutes.getRouter();
+  announcementRouter.stack.forEach(layer => {
+    addRoute(layer.route.methods, `/api/v1/announcements${layer.route.path}`, ...layer.route.stack.map(item => item.handle));
   });
 
   // Rate limiter middleware

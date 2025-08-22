@@ -330,4 +330,168 @@ export default class UserModule {
       throw error;
     }
   }
+
+  /**
+   * Request password recovery token
+   */
+  async requestRecoveryToken(email, crypto, stringService) {
+    try {
+      // Check if user exists
+      const user = await this.getUserByEmail(email);
+      if (!user) {
+        throw new Error(stringService?.dbUserNotFound || "User not found");
+      }
+
+      // Delete any existing tokens for this email
+      await this.d1.prepare(
+        "DELETE FROM recovery_tokens WHERE email = ?"
+      ).bind(email).run();
+
+      // Generate new token
+      const token = crypto.randomBytes(32).toString("hex");
+      const id = crypto.randomUUID();
+      
+      // Set expiry to 10 minutes from now (600 seconds)
+      const expiresAt = new Date(Date.now() + 600000).toISOString();
+      const now = new Date().toISOString();
+
+      // Insert new recovery token
+      await this.d1.prepare(
+        `INSERT INTO recovery_tokens (id, email, token, expiresAt, createdAt, updatedAt) 
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(id, email, token, expiresAt, now, now).run();
+
+      return { id, email, token, expiresAt };
+    } catch (error) {
+      this.logger.error({
+        message: `Error requesting recovery token: ${error.message}`,
+        service: "UserModule",
+        method: "requestRecoveryToken",
+        email,
+        stack: error.stack,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Validate recovery token
+   */
+  async validateRecoveryToken(candidateToken, stringService) {
+    try {
+      const now = new Date().toISOString();
+      
+      // Find the token and check if it's not expired
+      const result = await this.d1.prepare(
+        `SELECT * FROM recovery_tokens 
+         WHERE token = ? AND expiresAt > ?`
+      ).bind(candidateToken, now).first();
+
+      if (!result) {
+        throw new Error(stringService?.dbTokenNotFound || "Invalid or expired recovery token");
+      }
+
+      return result;
+    } catch (error) {
+      this.logger.error({
+        message: `Error validating recovery token: ${error.message}`,
+        service: "UserModule",
+        method: "validateRecoveryToken",
+        stack: error.stack,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Reset user password
+   */
+  async resetPassword(password, candidateToken, bcrypt, stringService) {
+    try {
+      // Validate token
+      const recoveryToken = await this.validateRecoveryToken(candidateToken, stringService);
+      
+      // Get user by email
+      const user = await this.getUserByEmail(recoveryToken.email);
+
+      if (!user) {
+        throw new Error(stringService?.dbUserNotFound || "User not found");
+      }
+
+      // Check if new password is same as old password
+      const match = await bcrypt.compare(password, user.password);
+
+      if (match) {
+        throw new Error("Password cannot be the same as the old password");
+      }
+
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const now = new Date().toISOString();
+
+      // Update user password
+      await this.d1.prepare(
+        "UPDATE users SET password = ?, updatedAt = ? WHERE email = ?"
+      ).bind(hashedPassword, now, recoveryToken.email).run();
+
+      // Delete all recovery tokens for this email
+      await this.d1.prepare(
+        "DELETE FROM recovery_tokens WHERE email = ?"
+      ).bind(recoveryToken.email).run();
+
+      // Fetch the user again without the password
+      const updatedUser = await this.d1.prepare(
+        `SELECT id, firstName, lastName, email, avatarImage, isActive, 
+         isVerified, role, teamId, checkTTL, createdAt, updatedAt 
+         FROM users WHERE email = ?`
+      ).bind(recoveryToken.email).first();
+
+      // Parse role if it's JSON
+      if (updatedUser && updatedUser.role) {
+        try {
+          updatedUser.role = JSON.parse(updatedUser.role);
+        } catch (e) {
+          updatedUser.role = [updatedUser.role];
+        }
+      }
+
+      return updatedUser;
+    } catch (error) {
+      this.logger.error({
+        message: `Error resetting password: ${error.message}`,
+        service: "UserModule",
+        method: "resetPassword",
+        stack: error.stack,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Clean up expired recovery tokens
+   */
+  async cleanupExpiredTokens() {
+    try {
+      const now = new Date().toISOString();
+      const result = await this.d1.prepare(
+        "DELETE FROM recovery_tokens WHERE expiresAt <= ?"
+      ).bind(now).run();
+      
+      this.logger.info({
+        message: `Cleaned up ${result.meta.changes} expired recovery tokens`,
+        service: "UserModule",
+        method: "cleanupExpiredTokens",
+      });
+      
+      return result.meta.changes;
+    } catch (error) {
+      this.logger.error({
+        message: `Error cleaning up expired tokens: ${error.message}`,
+        service: "UserModule",
+        method: "cleanupExpiredTokens",
+        stack: error.stack,
+      });
+      throw error;
+    }
+  }
 }

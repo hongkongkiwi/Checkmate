@@ -48,6 +48,9 @@ import NotificationModule from "../db/cf/modules/notificationModule.js";
 import InviteModule from "../db/cf/modules/inviteModule.js";
 import MaintenanceWindowModule from "../db/cf/modules/maintenanceWindowModule.js";
 import StatusPageModule from "../db/cf/modules/statusPageModule.js";
+import RecoveryModule from "../db/cf/modules/recoveryModule.js";
+import SettingsModule from "../db/cf/modules/settingsModule.js";
+import AnnouncementModule from "../db/cf/modules/announcementModule.js";
 
 export const initializeServices = async ({ logger, envSettings, settingsService, d1, kv, r2, sentry }) => {
   const serviceRegistry = new ServiceRegistry({ logger });
@@ -67,6 +70,9 @@ export const initializeServices = async ({ logger, envSettings, settingsService,
   const inviteModule = new InviteModule({ logger, d1 });
   const maintenanceWindowModule = new MaintenanceWindowModule({ logger, d1 });
   const statusPageModule = new StatusPageModule({ logger, d1 });
+  const recoveryModule = new RecoveryModule({ d1, crypto, stringService, logger });
+  const settingsModule = new SettingsModule({ d1, logger, crypto });
+  const announcementModule = new AnnouncementModule({ d1, logger });
 
   // Create Cloudflare Database
   const db = new CFDatabase({
@@ -83,6 +89,9 @@ export const initializeServices = async ({ logger, envSettings, settingsService,
     inviteModule,
     maintenanceWindowModule,
     statusPageModule,
+    recoveryModule,
+    settingsModule,
+    announcementModule,
     sentry,
   });
 

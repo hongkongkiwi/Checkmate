@@ -14,6 +14,7 @@ import LogController from "../controllers/logController.js";
 import StatusPageController from "../controllers/statusPageController.js";
 import NotificationController from "../controllers/notificationController.js";
 import DiagnosticController from "../controllers/diagnosticController.js";
+import AnnouncementController from "../controllers/announcementsController.js";
 
 export const initializeControllers = (services) => {
 	const controllers = {};
@@ -61,6 +62,8 @@ export const initializeControllers = (services) => {
 	controllers.diagnosticController = new DiagnosticController(commonDependencies, {
 		diagnosticService: services.diagnosticService,
 	});
+
+	controllers.announcementController = new AnnouncementController(commonDependencies);
 
 	return controllers;
 };

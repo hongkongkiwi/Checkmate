@@ -1,7 +1,7 @@
 export class CFDatabase {
   static SERVICE_NAME = "CFDatabase";
 
-  constructor({ logger, envSettings, d1, kv, r2, userModule, monitorModule, checkModule, teamModule, notificationModule, inviteModule, maintenanceWindowModule, statusPageModule, sentry }) {
+  constructor({ logger, envSettings, d1, kv, r2, userModule, monitorModule, checkModule, teamModule, notificationModule, inviteModule, maintenanceWindowModule, statusPageModule, recoveryModule, settingsModule, announcementModule, sentry }) {
     this.logger = logger;
     this.envSettings = envSettings;
     this.d1 = d1;
@@ -15,6 +15,9 @@ export class CFDatabase {
     this.inviteModule = inviteModule;
     this.maintenanceWindowModule = maintenanceWindowModule;
     this.statusPageModule = statusPageModule;
+    this.recoveryModule = recoveryModule;
+    this.settingsModule = settingsModule;
+    this.announcementModule = announcementModule;
     this.sentry = sentry;
   }
 
@@ -221,6 +224,80 @@ export class CFDatabase {
         )
       `).run();
 
+      // Recovery tokens table
+      await this.d1.prepare(`
+        CREATE TABLE IF NOT EXISTS recovery_tokens (
+          id TEXT PRIMARY KEY,
+          email TEXT UNIQUE,
+          token TEXT UNIQUE,
+          expiresAt TEXT,
+          createdAt TEXT,
+          updatedAt TEXT
+        )
+      `).run();
+
+      // App settings table
+      await this.d1.prepare(`
+        CREATE TABLE IF NOT EXISTS app_settings (
+          id TEXT PRIMARY KEY,
+          checkTTL INTEGER DEFAULT 30,
+          language TEXT DEFAULT 'gb',
+          pagespeedApiKey TEXT,
+          systemEmailHost TEXT,
+          systemEmailPort INTEGER,
+          systemEmailAddress TEXT,
+          systemEmailPassword TEXT,
+          systemEmailUser TEXT,
+          systemEmailConnectionHost TEXT DEFAULT 'localhost',
+          systemEmailTLSServername TEXT,
+          systemEmailSecure BOOLEAN DEFAULT 0,
+          systemEmailPool BOOLEAN DEFAULT 0,
+          systemEmailIgnoreTLS BOOLEAN DEFAULT 0,
+          systemEmailRequireTLS BOOLEAN DEFAULT 0,
+          systemEmailRejectUnauthorized BOOLEAN DEFAULT 1,
+          singleton BOOLEAN DEFAULT 1 UNIQUE,
+          version INTEGER DEFAULT 1,
+          globalThresholds TEXT, -- JSON object {cpu, memory, disk, temperature}
+          createdAt TEXT,
+          updatedAt TEXT
+        )
+      `).run();
+
+      // Monitor stats table
+      await this.d1.prepare(`
+        CREATE TABLE IF NOT EXISTS monitor_stats (
+          id TEXT PRIMARY KEY,
+          monitorId TEXT UNIQUE,
+          avgResponseTime REAL DEFAULT 0,
+          totalChecks INTEGER DEFAULT 0,
+          totalUpChecks INTEGER DEFAULT 0,
+          totalDownChecks INTEGER DEFAULT 0,
+          uptimePercentage REAL DEFAULT 0,
+          lastCheckTimestamp INTEGER DEFAULT 0,
+          lastResponseTime INTEGER DEFAULT 0,
+          timeOfLastFailure INTEGER DEFAULT 0,
+          createdAt TEXT,
+          updatedAt TEXT,
+          FOREIGN KEY (monitorId) REFERENCES monitors(id) ON DELETE CASCADE
+        )
+      `).run();
+
+      // Announcements table
+      await this.d1.prepare(`
+        CREATE TABLE IF NOT EXISTS announcements (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          message TEXT NOT NULL,
+          userId TEXT,
+          isActive BOOLEAN DEFAULT 1,
+          priority TEXT DEFAULT 'normal',
+          expiresAt TEXT,
+          createdAt TEXT,
+          updatedAt TEXT,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
+        )
+      `).run();
+
       // Create indexes for better performance
       try {
         await this.d1.prepare("CREATE INDEX IF NOT EXISTS idx_checks_monitorId ON checks(monitorId)").run();
@@ -236,6 +313,13 @@ export class CFDatabase {
         await this.d1.prepare("CREATE INDEX IF NOT EXISTS idx_maintenance_windows_teamId ON maintenance_windows(teamId)").run();
         await this.d1.prepare("CREATE INDEX IF NOT EXISTS idx_maintenance_windows_monitorId ON maintenance_windows(monitorId)").run();
         await this.d1.prepare("CREATE INDEX IF NOT EXISTS idx_status_pages_teamId ON status_pages(teamId)").run();
+        await this.d1.prepare("CREATE INDEX IF NOT EXISTS idx_recovery_tokens_email ON recovery_tokens(email)").run();
+        await this.d1.prepare("CREATE INDEX IF NOT EXISTS idx_recovery_tokens_token ON recovery_tokens(token)").run();
+        await this.d1.prepare("CREATE INDEX IF NOT EXISTS idx_recovery_tokens_expiresAt ON recovery_tokens(expiresAt)").run();
+        await this.d1.prepare("CREATE INDEX IF NOT EXISTS idx_monitor_stats_monitorId ON monitor_stats(monitorId)").run();
+        await this.d1.prepare("CREATE INDEX IF NOT EXISTS idx_announcements_userId ON announcements(userId)").run();
+        await this.d1.prepare("CREATE INDEX IF NOT EXISTS idx_announcements_isActive ON announcements(isActive)").run();
+        await this.d1.prepare("CREATE INDEX IF NOT EXISTS idx_announcements_createdAt ON announcements(createdAt)").run();
       } catch (error) {
         // Index creation might fail in some environments, but that's okay
         this.logger.warn({
@@ -348,7 +432,11 @@ export class CFDatabase {
         notifications: "notifications",
         invite_tokens: "invite_tokens",
         maintenance_windows: "maintenance_windows",
-        status_pages: "status_pages"
+        status_pages: "status_pages",
+        recovery_tokens: "recovery_tokens",
+        app_settings: "app_settings",
+        monitor_stats: "monitor_stats",
+        announcements: "announcements"
       };
 
       const table = tableMap[collection];
@@ -396,7 +484,11 @@ export class CFDatabase {
         notifications: "notifications",
         invite_tokens: "invite_tokens",
         maintenance_windows: "maintenance_windows",
-        status_pages: "status_pages"
+        status_pages: "status_pages",
+        recovery_tokens: "recovery_tokens",
+        app_settings: "app_settings",
+        monitor_stats: "monitor_stats",
+        announcements: "announcements"
       };
 
       const table = tableMap[collection];
@@ -476,7 +568,11 @@ export class CFDatabase {
         notifications: "notifications",
         invite_tokens: "invite_tokens",
         maintenance_windows: "maintenance_windows",
-        status_pages: "status_pages"
+        status_pages: "status_pages",
+        recovery_tokens: "recovery_tokens",
+        app_settings: "app_settings",
+        monitor_stats: "monitor_stats",
+        announcements: "announcements"
       };
 
       const table = tableMap[collection];
@@ -535,7 +631,11 @@ export class CFDatabase {
         notifications: "notifications",
         invite_tokens: "invite_tokens",
         maintenance_windows: "maintenance_windows",
-        status_pages: "status_pages"
+        status_pages: "status_pages",
+        recovery_tokens: "recovery_tokens",
+        app_settings: "app_settings",
+        monitor_stats: "monitor_stats",
+        announcements: "announcements"
       };
 
       const table = tableMap[collection];
@@ -583,7 +683,11 @@ export class CFDatabase {
         notifications: "notifications",
         invite_tokens: "invite_tokens",
         maintenance_windows: "maintenance_windows",
-        status_pages: "status_pages"
+        status_pages: "status_pages",
+        recovery_tokens: "recovery_tokens",
+        app_settings: "app_settings",
+        monitor_stats: "monitor_stats",
+        announcements: "announcements"
       };
 
       const table = tableMap[collection];
@@ -636,7 +740,11 @@ export class CFDatabase {
         notifications: "notifications",
         invite_tokens: "invite_tokens",
         maintenance_windows: "maintenance_windows",
-        status_pages: "status_pages"
+        status_pages: "status_pages",
+        recovery_tokens: "recovery_tokens",
+        app_settings: "app_settings",
+        monitor_stats: "monitor_stats",
+        announcements: "announcements"
       };
 
       const table = tableMap[collection];
@@ -691,7 +799,11 @@ export class CFDatabase {
         notifications: "notifications",
         invite_tokens: "invite_tokens",
         maintenance_windows: "maintenance_windows",
-        status_pages: "status_pages"
+        status_pages: "status_pages",
+        recovery_tokens: "recovery_tokens",
+        app_settings: "app_settings",
+        monitor_stats: "monitor_stats",
+        announcements: "announcements"
       };
 
       const table = tableMap[collection];
@@ -710,6 +822,144 @@ export class CFDatabase {
         method: "aggregate",
         collection,
         pipeline,
+        stack: error.stack,
+      });
+      
+      if (this.sentry) {
+        this.sentry.captureException(error);
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new announcement
+   */
+  async createAnnouncement(announcementData) {
+    try {
+      return await this.announcementModule.createAnnouncement(announcementData);
+    } catch (error) {
+      this.logger.error({
+        message: `Error creating announcement: ${error.message}`,
+        service: this.SERVICE_NAME,
+        method: "createAnnouncement",
+        announcementData,
+        stack: error.stack,
+      });
+      
+      if (this.sentry) {
+        this.sentry.captureException(error);
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Get all announcements
+   */
+  async getAnnouncements(options = {}) {
+    try {
+      return await this.announcementModule.getAnnouncements(options);
+    } catch (error) {
+      this.logger.error({
+        message: `Error getting announcements: ${error.message}`,
+        service: this.SERVICE_NAME,
+        method: "getAnnouncements",
+        options,
+        stack: error.stack,
+      });
+      
+      if (this.sentry) {
+        this.sentry.captureException(error);
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Get announcement by ID
+   */
+  async getAnnouncementById(id) {
+    try {
+      return await this.announcementModule.getAnnouncementById(id);
+    } catch (error) {
+      this.logger.error({
+        message: `Error getting announcement by ID: ${error.message}`,
+        service: this.SERVICE_NAME,
+        method: "getAnnouncementById",
+        id,
+        stack: error.stack,
+      });
+      
+      if (this.sentry) {
+        this.sentry.captureException(error);
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Update an announcement
+   */
+  async updateAnnouncement(id, updateData) {
+    try {
+      return await this.announcementModule.updateAnnouncement(id, updateData);
+    } catch (error) {
+      this.logger.error({
+        message: `Error updating announcement: ${error.message}`,
+        service: this.SERVICE_NAME,
+        method: "updateAnnouncement",
+        id,
+        updateData,
+        stack: error.stack,
+      });
+      
+      if (this.sentry) {
+        this.sentry.captureException(error);
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Delete an announcement
+   */
+  async deleteAnnouncement(id) {
+    try {
+      return await this.announcementModule.deleteAnnouncement(id);
+    } catch (error) {
+      this.logger.error({
+        message: `Error deleting announcement: ${error.message}`,
+        service: this.SERVICE_NAME,
+        method: "deleteAnnouncement",
+        id,
+        stack: error.stack,
+      });
+      
+      if (this.sentry) {
+        this.sentry.captureException(error);
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Get active announcements
+   */
+  async getActiveAnnouncements() {
+    try {
+      return await this.announcementModule.getActiveAnnouncements();
+    } catch (error) {
+      this.logger.error({
+        message: `Error getting active announcements: ${error.message}`,
+        service: this.SERVICE_NAME,
+        method: "getActiveAnnouncements",
         stack: error.stack,
       });
       

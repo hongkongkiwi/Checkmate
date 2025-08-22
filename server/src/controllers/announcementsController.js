@@ -32,7 +32,7 @@ class AnnouncementController extends BaseController {
 	 *
 	 * @returns {Promise<void>} A promise that resolves once the response is sent.
 	 */
-	createAnnouncement = asyncHandler(
+	createAnnouncement = this.asyncHandler(
 		async (req, res, next) => {
 			await createAnnouncementValidation.validateAsync(req.body);
 			const { title, message } = req.body;
@@ -61,7 +61,7 @@ class AnnouncementController extends BaseController {
 	 *  - `msg`: A message about the success of the request.
 	 * @param {Function} next - The next middleware function in the stack for error handling.
 	 */
-	getAnnouncement = asyncHandler(
+	getAnnouncement = this.asyncHandler(
 		async (req, res, next) => {
 			const allAnnouncements = await this.db.getAnnouncements();
 			return res.success({
