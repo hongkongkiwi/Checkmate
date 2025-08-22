@@ -29,6 +29,7 @@ Checkmate has been stress-tested with 1000+ active monitors without any particul
 - [📦 Demo](#demo)  
 - [🔗 User's guide](#users-guide)  
 - [🛠️ Installation](#installation)
+- [☁️ Cloudflare Deployment](#️-cloudflare-deployment)
 - [🏁 Translations](#translations)  
 - [🚀 Performance](#performance)  
 - [💚 Questions & Ideas](#questions--ideas)  
@@ -168,6 +169,83 @@ Here's how you can contribute:
 </a>
 
 [![Star History Chart](https://api.star-history.com/svg?repos=bluewave-labs/checkmate&type=Date)](https://star-history.com/#bluewave-labs/bluewave-uptime&Date)
+
+## ☁️ Cloudflare Deployment
+
+Checkmate can also be deployed to Cloudflare Workers with full feature parity to the traditional deployment. This setup provides a fully managed, scalable monitoring solution using Cloudflare's serverless technologies:
+
+- **Workers** - Application runtime
+- **D1** - Database (SQLite compatible)
+- **R2** - Static asset storage
+- **KV** - Caching layer
+- **Queues** - Background job processing
+
+### Prerequisites
+
+- Cloudflare account
+- Wrangler CLI installed (`npm install -g wrangler`)
+
+### Deployment
+
+1. Navigate to the scripts directory:
+   ```bash
+   cd scripts
+   ```
+
+2. Run the build script:
+   ```bash
+   ./build-cf.sh
+   ```
+
+3. Navigate to the server directory:
+   ```bash
+   cd ../server
+   ```
+
+4. Create Cloudflare resources:
+   ```bash
+   wrangler d1 create checkmate
+   wrangler r2 bucket create checkmate-assets
+   wrangler kv namespace create "checkmate-cache"
+   wrangler queues create checkmate-queue
+   ```
+
+5. Update the `wrangler.toml` file with your resource IDs.
+
+6. Set environment variables:
+   ```bash
+   wrangler secret put JWT_SECRET
+   wrangler secret put TOKEN_TTL
+   wrangler secret put SYSTEM_EMAIL_HOST
+   wrangler secret put CLIENT_HOST
+   ```
+
+7. Run database migrations:
+   ```bash
+   wrangler d1 migrations apply checkmate
+   ```
+
+8. Deploy the worker:
+   ```bash
+   wrangler deploy
+   ```
+
+### Testing
+
+The Cloudflare implementation includes comprehensive tests:
+
+```bash
+# Run all tests
+npm run test --prefix server
+
+# Run specific test suites
+npm run test:unit --prefix server
+npm run test:api --prefix server
+npm run test:integration --prefix server
+npm run test:migrations --prefix server
+```
+
+For detailed information about the Cloudflare implementation, see [CF_FEATURE_PARITY_SUMMARY.md](CF_FEATURE_PARITY_SUMMARY.md) and [server/README-CLOUDFLARE.md](server/README-CLOUDFLARE.md).
 
 ## Our sponsors
 

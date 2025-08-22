@@ -1,0 +1,46 @@
+{
+  "name": "checkmate-cf",
+  "version": "1.0.0",
+  "description": "Checkmate monitoring application for Cloudflare Workers",
+  "main": "src/cf-worker.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy-production": "wrangler deploy --env production",
+    "migrate": "wrangler d1 migrations apply checkmate",
+    "migrate-production": "wrangler d1 migrations apply checkmate --env production"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "monitoring",
+    "uptime"
+  ],
+  "author": "Checkmate Team",
+  "license": "ISC",
+  "dependencies": {
+    "itty-router": "^4.0.0",
+    "itty-router-extras": "^0.4.2",
+    "toucan-js": "^3.0.0",
+    "cors": "^2.8.5",
+    "compression": "^1.7.4",
+    "jsonwebtoken": "^9.0.0",
+    "bcryptjs": "^2.4.3",
+    "axios": "^1.0.0",
+    "got": "^14.0.0",
+    "ping": "^0.4.0",
+    "dockerode": "^4.0.0",
+    "nodemailer": "^6.0.0",
+    "handlebars": "^4.0.0",
+    "mjml": "^4.0.0",
+    "papaparse": "^5.0.0",
+    "gamedig": "^5.0.0",
+    "jmespath": "^0.16.0",
+    "sharp": "^0.33.0",
+    "ssl-checker": "^2.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

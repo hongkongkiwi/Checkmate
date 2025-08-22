@@ -1,0 +1,17 @@
+{
+  "name": "checkmate-cf-tests",
+  "version": "1.0.0",
+  "description": "Tests for Checkmate Cloudflare implementation",
+  "type": "module",
+  "scripts": {
+    "test": "mocha tests/cf/**/*.test.js --timeout 10000",
+    "test:unit": "mocha tests/cf/database/**/*.test.js --timeout 10000",
+    "test:api": "mocha tests/cf/api/**/*.test.js --timeout 10000",
+    "test:integration": "mocha tests/cf/integration/**/*.test.js --timeout 10000",
+    "test:migrations": "mocha tests/cf/migrations/**/*.test.js --timeout 10000"
+  },
+  "devDependencies": {
+    "mocha": "^10.2.0",
+    "chai": "^4.3.7"
+  }
+}
